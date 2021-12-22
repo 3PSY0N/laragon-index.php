@@ -1,24 +1,28 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-define("DB_LOGIN", "root");
-define("DB_PASS", "");
+ini_set('display_errors', 0);
+//ini_set('display_startup_errors', 1);
+//error_reporting(E_ALL);
 
-function getLastApacheVersion()
+function getLastApacheVersion(): array
 {
     $html = file_get_contents('https://www.apachelounge.com/download/VC15/');
-    preg_match('/https:\/\/home.apache.org\/~steffenal\/VC15\/binaries\/httpd-([0-9.]+)-win64-VC15.zip/i', $html, $matches);
+    preg_match(
+        '/https:\/\/home.apache.org\/~steffenal\/VC15\/binaries\/httpd-([0-9.]+)-win64-VC15.zip/i',
+        $html,
+        $matches
+    );
     $link = current($matches);
     $ver = end($matches);
     return [$link, $ver];
 }
 
-function getLastMariadbVersion()
+function getLastMariadbVersion(): array
 {
     $html = file_get_contents('https://downloads.mariadb.org/mariadb/');
     preg_match('/\/mariadb\/([0-9.]+)/i', $html, $matches);
-    $link =  'https://downloads.mariadb.org/interstitial/mariadb-'.end($matches).'/winx64-packages/mariadb-'.end($matches).'-winx64.zip/from/http%3A//ftp.utexas.edu/mariadb/';
+    $link = 'https://downloads.mariadb.org/interstitial/mariadb-'
+        . end($matches) . '/winx64-packages/mariadb-'
+        . end($matches) . '-winx64.zip/from/http%3A//ftp.utexas.edu/mariadb/';
     $ver = end($matches);
     return [$link, $ver];
 }
@@ -26,21 +30,17 @@ function getLastMariadbVersion()
 // get page for phpinfo
 function getQ($getQ)
 {
-    if (!empty($getQ)) {
-        switch ($getQ) {
-            case 'info':
-                phpinfo();
-                exit;
-                break;
-        }
+    if (!empty($getQ) && $getQ === 'info') {
+        phpinfo();
+        exit;
     }
 }
 
 // Get PHP extensions
-function getServerExtensions($server)
+function getServerExtensions($server): array
 {
     $ext = [];
-    
+
     switch ($server) {
         case 'php':
             $ext = get_loaded_extensions();
@@ -49,30 +49,33 @@ function getServerExtensions($server)
             $ext = apache_get_modules();
             break;
     }
-    
+
     sort($ext, SORT_STRING);
     $ext = array_chunk($ext, 2);
-    
+
     return $ext;
 }
 
 // Check PHP version
-function getPhpVersion()
+/**
+ * @throws JsonException
+ */
+function getPhpVersion(): array
 {
     $lastVersion = 0;
     // get last version from php.net
     $json = file_get_contents('https://www.php.net/releases/index.php?json');
-    $data = current(json_decode($json, true));
+    $data = current(json_decode($json, true, 512, JSON_THROW_ON_ERROR));
 
     $lastVersion = $data['version'];
 
     // get current installed version
-    $phpVersion = phpversion();
-    
+    $phpVersion = PHP_VERSION;
+
     // Remove dot character from version ex: 1.2.3 to 123 and convert string to integer
     $intLastVersion = (int)str_replace('.', '', $lastVersion);
     $intCurVersion = (int)str_replace('.', '', $phpVersion);
-    
+
     return [
         'lastVersion'    => $lastVersion,
         'currentVersion' => $phpVersion,
@@ -82,11 +85,14 @@ function getPhpVersion()
 }
 
 // Httpd Versions
-function serverInfo()
+/**
+ * @throws JsonException
+ */
+function serverInfo(): array
 {
     $server = explode(' ', $_SERVER['SERVER_SOFTWARE']);
-    $openSsl = isset($server[2]) ? $server[2] : null;
-    
+    $openSsl = $server[2] ?? null;
+
     return [
         'httpdVer' => $server[0],
         'openSsl'  => $openSsl,
@@ -96,23 +102,15 @@ function serverInfo()
     ];
 }
 
-// get SQL version
-function getSQLVersion() {
-    $link = mysqli_connect("localhost", DB_LOGIN, DB_PASS);
-    $output =  mysqli_get_server_info($link);
-    mysqli_close($link);
-    return $output;
-}
-
 // PHP links
-function phpDlLink($version)
+function phpDlLink($version): array
 {
-    $VC = version_compare(PHP_VERSION, '8.0.0', '<') ? 'vs16' : 'vc15';
-    $changeLog = version_compare(PHP_VERSION, '8.0.0', '<') ? 8 : 7;
-    $changelog = 'https://www.php.net/ChangeLog-'. $changeLog .'.php#' . $version;
+    $VC = PHP_VERSION_ID < 80000 ? 'vs16' : 'vc15';
+    $changeLog = PHP_VERSION_ID < 80000 ? 8 : 7;
+    $changelog = 'https://www.php.net/ChangeLog-' . $changeLog . '.php#' . $version;
 
     $downLink = 'https://windows.php.net/downloads/releases/php-' . $version . '-Win32-' . $VC . '-x64.zip';
-    
+
     return [
         'changeLog' => $changelog,
         'downLink'  => $downLink
@@ -120,13 +118,13 @@ function phpDlLink($version)
 }
 
 // define sites-enabled directory
-function getSiteDir()
+function getSiteDir(): string
 {
-    if (preg_match("/^Apache/", $_SERVER['SERVER_SOFTWARE'])) {
+    if (0 === strpos($_SERVER['SERVER_SOFTWARE'], "Apache")) {
         return "../laragon/etc/apache2/sites-enabled";
-    } else {
-        return "../laragon/etc/nginx/sites-enabled";
     }
+
+    return "../laragon/etc/nginx/sites-enabled";
 }
 
 // get local sites list and remove unwanted values
@@ -142,28 +140,28 @@ function getLocalSites()
         '..',
         '00-default.conf'
     ];
-    
+
     foreach ($rmItems as $key => $value) {
-        $line = array_search($value, $scanDir);
+        $line = array_search($value, $scanDir, true);
         unset($scanDir[$line]);
     }
-    
+
     return $scanDir;
 }
 
 // Render list of links
-function renderLinks()
+function renderLinks(): ?string
 {
     //ob_start();
     $contentHttp = null;
     $contentHttps = null;
     $linklist = null;
-    
+
     foreach (getLocalSites() as $value) {
         $start = preg_split('/^auto./', $value);
         $end = preg_split('/.conf$/', $start[1]);
         unset($end[1]);
-        
+
         foreach ($end as $link) {
             $contentHttp = '<a href="http://' . $link . '">';
             $contentHttp .= 'http://' . $link;
@@ -171,8 +169,9 @@ function renderLinks()
             $contentHttps = '<a href="https://' . $link . '">';
             $contentHttps .= 'https://' . $link;
             $contentHttps .= '</a>';
-        
-		    $linklist .= '<div class="alert alert-primary p-2 m-1 w100 linklist">' . $contentHttp . '<span class="arrows mx-2"> ⚠ <|> 🔒 </span>'. $contentHttps . '</div>';
+
+            $linklist .= '<div class="bg-gray-100 p-2">'
+                . $contentHttps . '<span> 🔒 <|> ⚠ </span>' . $contentHttp . '</div>';
         }
     }
     return $linklist;
@@ -184,7 +183,7 @@ function checkHttpdServer($server)
     if ($server === 'apache') {
         $server = ucfirst($server);
     }
-    
+
     return preg_match("/^$server/", $_SERVER['SERVER_SOFTWARE']);
 }
 
@@ -192,8 +191,14 @@ function checkHttpdServer($server)
 
 isset($_GET['q']) ? getQ($_GET['q']) : null;
 
-$phpVer = getPhpVersion();
-$serverInfo = serverInfo();
+try {
+    $phpVer = getPhpVersion();
+} catch (JsonException $e) {
+}
+try {
+    $serverInfo = serverInfo();
+} catch (JsonException $e) {
+}
 $phpVer['intLastVer'] = strlen($phpVer['intLastVer']) === 3 ? $phpVer['intLastVer'] . '0' : $phpVer['intLastVer'];
 ?>
 
@@ -203,171 +208,133 @@ $phpVer['intLastVer'] = strlen($phpVer['intLastVer']) === 3 ? $phpVer['intLastVe
     <!-- Required meta tags -->
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css" integrity="sha384-B0vP5xmATw1+K9KRQjQERJvTumQW0nPEzvF6L/Z6nronJ3oUOFUFpCjEUQouq2+l" crossorigin="anonymous">    <title>Laragon WebServer Projects</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <title>Laragon WebServer Projects</title>
     <style>
-    .w100{width:100%;}
-    .df-fr-jc {display:flex;flex-flow:row wrap;justify-content:center;}
-    .linklist {	display: grid;    }
-    a{color:#555;font-weight:bold;}
-    a:hover{color:#007cff;text-decoration:none;}
-    .banner{text-align:center;text-shadow:3px 3px 6px rgba(0,0,0,.8);}
-    .arrows{display:none;}
-    @media(min-width:767px){
-        .arrows{display:block;}
-        .linklist {	justify-content: center;	display: flex;	flex-wrap: wrap;    }
-        .alert-primary {
-            color: #004085;
-            background-color: #f6f9ff;
-            border-color: #eaf4ff;
+        a:hover {
+            color:  #3b82f6 !important;
         }
-    }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="banner">
-        <img class="" src="https://laragon.org/logo.svg" alt="Laragon" height="180px" width="180px"/>
-        <h1>Laragon WebServer</h1>
+<div class="container mx-auto">
+    <div class="flex flex-col justify-center">
+        <img class="self-center" src="https://laragon.org/logo.svg" alt="Laragon" height="180px" width="180px"/>
+        <h1 class="text-center text-4xl">Laragon WebServer</h1>
     </div>
-    <!--    Buttons-->
-    <div class="text-center">
-        <?php if ($phpVer['intCurVer'] < $phpVer['intLastVer']): ?>
-            <button type="button" class="btn btn-sm btn-success" data-toggle="modal" data-target="#updateModal">
-                PHP new update
-            </button>
-        <?php endif; ?>
-        <button type="button" class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#extensionsModal">
-            PHP extensions
-        </button>
-        <?php if (checkHttpdServer('apache')): ?>
-            <button type="button" class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#apacheExtModal">
-                Apache extensions
-            </button>
-        <?php endif; ?>
+
+    <div class="container text-center p-4">
+        <h2 class="text-center text-primary pb-2">Laragon Projects</h2>
+        <div class="flex flex-col gap-2"><?= renderLinks(); ?></div>
     </div>
-    <!--    Projects list-->
-    <div class="row pt-3">
-        <div class="container text-center">
-            <h2 class="text-center text-primary pb-2">Laragon Projects</h2>
-            <div class=".df-fr-jc"><?= renderLinks(); ?></div>
-        </div>
-    </div>
+
+
     <!--Server informations-->
-    <div class="row pt-3 mb-5">
+    <div class="border p-4">
         <div class="container text-center">
             <h2 class="text-primary">Server Informations</h2>
-            <div class="col-12">
+            <div>
                 <?php
-					if(function_exists('apache_get_version')):
+                if (function_exists('apache_get_version')) {
                     $lastApacheVer = getLastApacheVersion();
-				?>
-                    <?= $serverInfo['httpdVer']; ?>
-                    <span class="small">(Apache Last update: <a href="<?= current($lastApacheVer); ?>"><?= end($lastApacheVer);?></a>)</span>
-				<?php else: ?>
-                    <?= $serverInfo['httpdVer']; ?><br>
-                <?php endif; ?>
+
+                    echo $serverInfo['httpdVer'];
+                    echo '<span class="text-sm">(Apache Last update: <a href="' . current($lastApacheVer) . '">'
+                        . end($lastApacheVer) . '</a>)</span>';
+                } else {
+                    echo $serverInfo['httpdVer'];
+                }
+                ?>
             </div>
-            <div class="col-12">
+            <div>
                 SSL/<strong><?= OPENSSL_VERSION_TEXT ?></strong>
             </div>
-            <div class="col-12">
+            <div>
                 PHP/<strong><a href="./?q=info"><?= $serverInfo['phpVer']; ?></a></strong>
-                 -- 
+                --
                 Xdebug/<strong><?= phpversion('xdebug'); ?></strong>
             </div>
-            <div class="col-12">
-                SQL/<strong><?= getSQLVersion(); ?></strong>
-                <?php $lastMariadbVer = getLastMariadbVersion(); ?>
-                <span class="small">(Mariadb Last update: <a href="<?= current($lastMariadbVer); ?>"><?= end($lastMariadbVer);?></a>)</span>
-            </div>
-            <hr class="my-3">
-            <div class="col-12">
+            <div>
                 Document Root: <strong><?= $serverInfo['docRoot']; ?></strong>
             </div>
-            <div class="col-12">
+            <div>
                 <a title="Getting Started" href="https://laragon.org/docs">Getting started with Laragon</a>
             </div>
         </div>
     </div>
-</div>
 
-<div class="modal fade" id="updateModal" tabindex="-1" role="dialog" aria-labelledby="updateModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="updateModalLabel">PHP Update</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+    <div class="mx-auto border border-gray-200" x-data="{selected:null}">
+        <ul class="shadow-box mb-4">
+            <li class="relative border-b border-gray-200 bg-white">
+                <button type="button" class="w-full px-8 py-6 text-left shadow"
+                        @click="selected !== 1 ? selected = 1 : selected = null">
+                    <span class="flex items-center justify-between">
+                        <span>PHP Version</span>
+                    </span>
                 </button>
-            </div>
-            <div class="modal-body text-center">
-                <p>
-                    PHP <span class="text-primary font-weight-bold"><?= $phpVer['lastVersion']; ?></span> is available
-                    (<a href="<?= phpDlLink($phpVer['lastVersion'])['changeLog']; ?>" class="text-dark" target="_blank">View changelog</a>)
-                </p>
-                <p>Current version <strong><?= $phpVer['currentVersion'] ?></strong></p>
-            </div>
-            <div class="modal-footer">
-                <a href="<?= phpDlLink($phpVer['lastVersion'])['downLink']; ?>" class="btn btn-sm btn-success text-light">
-                    Download PHP <?= $phpVer['lastVersion']; ?>
-                </a>
-                <button type="button" class="btn btn-sm btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-<div class="modal fade" id="extensionsModal" tabindex="-1" role="dialog" aria-labelledby="extensionsModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="extentionsModalLabel">PHP Extensions</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <div class="container d-flex flex-wrap justify-content-center">
-                    <?php for ($i = 0; $i < count(get_loaded_extensions()); $i++): ?>
-                        <button type="button" class="btn btn-primary mr-1 mb-1">
-                        <span class="badge badge-light"><?= $i; ?></span> <?= get_loaded_extensions()[$i]; ?>
-                        </button>
-                    <?php endfor; ?>
+                <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style=""
+                     x-ref="container1"
+                     x-bind:style="selected == 1 ? 'max-height: ' + $refs.container1.scrollHeight + 'px' : ''">
+                    <div class="p-6">
+                        <p>
+                            PHP <strong><?= $phpVer['lastVersion']; ?></strong> is available
+                            (<a href="<?= phpDlLink($phpVer['lastVersion'])['changeLog']; ?>" class="text-dark"
+                                target="_blank">View
+                                changelog</a>)
+                        </p>
+                        <p>Current version <strong><?= $phpVer['currentVersion'] ?></strong></p>
+
+                        <div>
+                            <a href="<?= phpDlLink($phpVer['lastVersion'])['downLink']; ?>"
+                               class="btn btn-sm btn-success text-light">
+                                Download PHP <strong><?= $phpVer['lastVersion']; ?></strong>
+                            </a>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-<?php if(function_exists('apache_get_version')): ?>
-<div class="modal fade" id="apacheExtModal" tabindex="-1" role="dialog" aria-labelledby="apacheExtModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="apacheExtModalLabel">Apache Extensions</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
+            </li>
+            <li class="relative border-b border-gray-200 bg-white">
+                <button type="button" class="w-full px-8 py-6 text-left shadow"
+                        @click="selected !== 2 ? selected = 2 : selected = null">
+                <span class="flex items-center justify-between">
+                    <span>Loaded PHP Extensions</span>
+                </span>
                 </button>
-            </div>
-            <div class="modal-body">
-                <div class="container d-flex flex-wrap justify-content-center">
-                    <?php for ($i = 0; $i < count(apache_get_modules()); $i++): ?>
-                        <button type="button" class="btn btn-primary mr-1 mb-1">
-                            <span class="badge badge-light"><?= $i; ?></span> <?= ltrim(apache_get_modules()[$i], 'mod_'); ?>
-                        </button>
-                    <?php endfor; ?>
+                <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style=""
+                     x-ref="container2"
+                     x-bind:style="selected == 2 ? 'max-height: ' + $refs.container2.scrollHeight + 'px' : ''">
+                    <div class="p-6 flex flex-wrap gap-2">
+                        <?php for ($i = 0, $iMax = count(get_loaded_extensions()); $i < $iMax; $i++): ?>
+                            <span class="px-4 py-1 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
+                            <?= get_loaded_extensions()[$i] ?>
+                        </span>
+                        <?php endfor; ?>
+                    </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-            </div>
-        </div>
+            </li>
+            <li class="relative border-b border-gray-200 bg-white">
+                <button type="button" class="w-full px-8 py-6 text-left shadow"
+                        @click="selected !== 3 ? selected = 3 : selected = null">
+            <span class="flex items-center justify-between">
+                <span>Loaded Apache Extensions</span>
+            </span>
+                </button>
+                <div class="relative overflow-hidden transition-all max-h-0 duration-700 text-sm" style=""
+                     x-ref="container3"
+                     x-bind:style="selected == 3 ? 'max-height: ' + $refs.container3.scrollHeight + 'px' : ''">
+                    <div class="p-6 flex flex-wrap gap-2">
+                        <?php if (function_exists('apache_get_version')): ?>
+                            <?php for ($i = 0, $iMax = count(apache_get_modules()); $i < $iMax; $i++): ?>
+                                <span class="px-4 py-1 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
+                            <?= ltrim(apache_get_modules()[$i], 'mod_'); ?>
+                            </span>
+                            <?php endfor; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </li>
+        </ul>
     </div>
 </div>
-<?php endif; ?>
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js" integrity="sha384-Piv4xVNRyMGpqkS2by6br4gNJ7DXjqk09RmUpJ8jgGtD7zP9yug3goQfGII0yAns" crossorigin="anonymous"></script></body>
 </html>
-
