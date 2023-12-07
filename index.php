@@ -1,7 +1,11 @@
 <?php
-ini_set('display_errors', 0);
-//ini_set('display_startup_errors', 1);
-//error_reporting(E_ALL);
+
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+const WEB_PORT = '';
+const HTTPS_ACTIVE = false;
 
 function getLastApacheVersion(): array
 {
@@ -57,9 +61,6 @@ function getServerExtensions($server): array
 }
 
 // Check PHP version
-/**
- * @throws JsonException
- */
 function getPhpVersion(): array
 {
     $lastVersion = 0;
@@ -85,9 +86,6 @@ function getPhpVersion(): array
 }
 
 // Httpd Versions
-/**
- * @throws JsonException
- */
 function serverInfo(): array
 {
     $server = explode(' ', $_SERVER['SERVER_SOFTWARE']);
@@ -105,7 +103,7 @@ function serverInfo(): array
 // PHP links
 function phpDlLink($version): array
 {
-    $VC = PHP_VERSION_ID < 80000 ? 'vs16' : 'vc15';
+    $VC = PHP_VERSION_ID < 80000 ? 'vc15' : 'vs16';
     $changeLog = PHP_VERSION_ID < 80000 ? 8 : 7;
     $changelog = 'https://www.php.net/ChangeLog-' . $changeLog . '.php#' . $version;
 
@@ -163,15 +161,25 @@ function renderLinks(): ?string
         unset($end[1]);
 
         foreach ($end as $link) {
-            $contentHttp = '<a href="http://' . $link . '">';
-            $contentHttp .= 'http://' . $link;
+            $contentHttp = '<a href="http://' . $link . WEB_PORT . '">';
+            $contentHttp .= 'http://' . $link . WEB_PORT;
             $contentHttp .= '</a>';
-            $contentHttps = '<a href="https://' . $link . '">';
-            $contentHttps .= 'https://' . $link;
-            $contentHttps .= '</a>';
+			
+			$linklist .= '<div class="bg-gray-100 p-2">';
+			$linklist .= '<p><span> ⚠ </span>';
+			$linklist .= $contentHttp;
+			$linklist .= '</p>';
+			
+			if (HTTPS_ACTIVE) {
+				$contentHttps = '<a href="https://' . $link . WEB_PORT . '">';
+				$contentHttps .= 'https://' . $link . WEB_PORT;
+				$contentHttps .= '</a>';
+				$linklist .= '<p><span> 🔒 </span>';
+				$linklist .= $contentHttps;
+				$linklist .= '</p>';
+			}
 
-            $linklist .= '<div class="bg-gray-100 p-2">'
-                . $contentHttps . '<span> 🔒 <|> ⚠ </span>' . $contentHttp . '</div>';
+			$linklist .= '</div>';
         }
     }
     return $linklist;
@@ -193,17 +201,19 @@ isset($_GET['q']) ? getQ($_GET['q']) : null;
 
 try {
     $phpVer = getPhpVersion();
-} catch (JsonException $e) {
-}
+} catch (JsonException $e) {}
+
 try {
     $serverInfo = serverInfo();
-} catch (JsonException $e) {
-}
+} catch (JsonException $e) {}
+
 $phpVer['intLastVer'] = strlen($phpVer['intLastVer']) === 3 ? $phpVer['intLastVer'] . '0' : $phpVer['intLastVer'];
+
 ?>
 
 <!doctype html>
 <html lang="en">
+
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
@@ -213,128 +223,120 @@ $phpVer['intLastVer'] = strlen($phpVer['intLastVer']) === 3 ? $phpVer['intLastVe
     <title>Laragon WebServer Projects</title>
     <style>
         a:hover {
-            color:  #3b82f6 !important;
+            color: #3b82f6 !important;
         }
     </style>
 </head>
+
 <body>
-<div class="container mx-auto">
-    <div class="flex flex-col justify-center">
-        <img class="self-center" src="https://laragon.org/logo.svg" alt="Laragon" height="180px" width="180px"/>
-        <h1 class="text-center text-4xl">Laragon WebServer</h1>
-    </div>
+    <div class="container mx-auto">
+        <div class="flex flex-col justify-center">
+            <img class="self-center" src="https://laragon.org/logo.svg" alt="Laragon" height="180px" width="180px" />
+            <h1 class="text-center text-4xl">Laragon WebServer</h1>
+        </div>
 
-    <div class="container text-center p-4">
-        <h2 class="text-center text-primary pb-2">Laragon Projects</h2>
-        <div class="flex flex-col gap-2"><?= renderLinks(); ?></div>
-    </div>
+        <div class="container text-center p-4">
+            <h2 class="text-center text-primary pb-2">Laragon Projects</h2>
+			
+            <div class="grid grid-cols-2 gap-2"><?= renderLinks(); ?></div>
+        </div>
 
 
-    <!--Server informations-->
-    <div class="border p-4">
-        <div class="container text-center">
-            <h2 class="text-primary">Server Informations</h2>
-            <div>
-                <?php
-                if (function_exists('apache_get_version')) {
-                    $lastApacheVer = getLastApacheVersion();
+        <!--Server informations-->
+        <div class="border p-4">
+            <div class="container text-center">
+                <h2 class="text-primary">Server Informations</h2>
+                <div>
+                    <?php
+                    if (function_exists('apache_get_version')) {
+                        $lastApacheVer = getLastApacheVersion();
 
-                    echo $serverInfo['httpdVer'];
-                    echo '<span class="text-sm">(Apache Last update: <a href="' . current($lastApacheVer) . '">'
-                        . end($lastApacheVer) . '</a>)</span>';
-                } else {
-                    echo $serverInfo['httpdVer'];
-                }
-                ?>
-            </div>
-            <div>
-                SSL/<strong><?= OPENSSL_VERSION_TEXT ?></strong>
-            </div>
-            <div>
-                PHP/<strong><a href="./?q=info"><?= $serverInfo['phpVer']; ?></a></strong>
-                --
-                Xdebug/<strong><?= phpversion('xdebug'); ?></strong>
-            </div>
-            <div>
-                Document Root: <strong><?= $serverInfo['docRoot']; ?></strong>
-            </div>
-            <div>
-                <a title="Getting Started" href="https://laragon.org/docs">Getting started with Laragon</a>
+                        echo $serverInfo['httpdVer'];
+                        echo '<span class="text-sm">(Apache Last update: <a href="' . current($lastApacheVer) . '">'
+                            . end($lastApacheVer) . '</a>)</span>';
+                    } else {
+                        echo $serverInfo['httpdVer'];
+                    }
+                    ?>
+                </div>
+                <div>
+                    SSL/<strong><?= OPENSSL_VERSION_TEXT ?></strong>
+                </div>
+                <div>
+                    PHP/<strong><a href="./?q=info"><?= $serverInfo['phpVer']; ?></a></strong>
+                    --
+                    Xdebug/<strong><?= phpversion('xdebug'); ?></strong>
+                </div>
+                <div>
+                    Document Root: <strong><?= $serverInfo['docRoot']; ?></strong>
+                </div>
+                <div>
+                    <a title="Getting Started" href="https://laragon.org/docs">Getting started with Laragon</a>
+                </div>
             </div>
         </div>
-    </div>
 
-    <div class="mx-auto border border-gray-200" x-data="{selected:null}">
-        <ul class="shadow-box mb-4">
-            <li class="relative border-b border-gray-200 bg-white">
-                <button type="button" class="w-full px-8 py-6 text-left shadow"
-                        @click="selected !== 1 ? selected = 1 : selected = null">
-                    <span class="flex items-center justify-between">
-                        <span>PHP Version</span>
-                    </span>
-                </button>
-                <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style=""
-                     x-ref="container1"
-                     x-bind:style="selected == 1 ? 'max-height: ' + $refs.container1.scrollHeight + 'px' : ''">
-                    <div class="p-6">
-                        <p>
-                            PHP <strong><?= $phpVer['lastVersion']; ?></strong> is available
-                            (<a href="<?= phpDlLink($phpVer['lastVersion'])['changeLog']; ?>" class="text-dark"
-                                target="_blank">View
-                                changelog</a>)
-                        </p>
-                        <p>Current version <strong><?= $phpVer['currentVersion'] ?></strong></p>
+        <div class="mx-auto border border-gray-200" x-data="{selected:null}">
+            <ul class="shadow-box">
+                <li class="relative border-b border-gray-200 bg-white">
+                    <button type="button" class="w-full px-8 py-6 text-left shadow" @click="selected !== 1 ? selected = 1 : selected = null">
+                        <span class="flex items-center justify-between">
+                            <span>PHP Version</span>
+                        </span>
+                    </button>
+                    <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style="" x-ref="container1" x-bind:style="selected == 1 ? 'max-height: ' + $refs.container1.scrollHeight + 'px' : ''">
+                        <div class="p-6">
+                            <p>
+                                PHP <strong><?= $phpVer['lastVersion']; ?></strong> is available
+                                (<a href="<?= phpDlLink($phpVer['lastVersion'])['changeLog']; ?>" class="text-dark" target="_blank">View
+                                    changelog</a>)
+                            </p>
+                            <p>Current version <strong><?= $phpVer['currentVersion'] ?></strong></p>
 
-                        <div>
-                            <a href="<?= phpDlLink($phpVer['lastVersion'])['downLink']; ?>"
-                               class="btn btn-sm btn-success text-light">
-                                Download PHP <strong><?= $phpVer['lastVersion']; ?></strong>
-                            </a>
+                            <div>
+                                <a href="<?= phpDlLink($phpVer['lastVersion'])['downLink']; ?>" class="btn btn-sm btn-success text-light">
+                                    Download PHP <strong><?= $phpVer['lastVersion']; ?></strong>
+                                </a>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </li>
-            <li class="relative border-b border-gray-200 bg-white">
-                <button type="button" class="w-full px-8 py-6 text-left shadow"
-                        @click="selected !== 2 ? selected = 2 : selected = null">
-                <span class="flex items-center justify-between">
-                    <span>Loaded PHP Extensions</span>
-                </span>
-                </button>
-                <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style=""
-                     x-ref="container2"
-                     x-bind:style="selected == 2 ? 'max-height: ' + $refs.container2.scrollHeight + 'px' : ''">
-                    <div class="p-6 flex flex-wrap gap-2">
-                        <?php for ($i = 0, $iMax = count(get_loaded_extensions()); $i < $iMax; $i++): ?>
-                            <span class="px-4 py-1 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
-                            <?= get_loaded_extensions()[$i] ?>
+                </li>
+                <li class="relative border-b border-gray-200 bg-white">
+                    <button type="button" class="w-full px-8 py-6 text-left shadow" @click="selected !== 2 ? selected = 2 : selected = null">
+                        <span class="flex items-center justify-between">
+                            <span>Loaded PHP Extensions</span>
                         </span>
-                        <?php endfor; ?>
-                    </div>
-                </div>
-            </li>
-            <li class="relative border-b border-gray-200 bg-white">
-                <button type="button" class="w-full px-8 py-6 text-left shadow"
-                        @click="selected !== 3 ? selected = 3 : selected = null">
-            <span class="flex items-center justify-between">
-                <span>Loaded Apache Extensions</span>
-            </span>
-                </button>
-                <div class="relative overflow-hidden transition-all max-h-0 duration-700 text-sm" style=""
-                     x-ref="container3"
-                     x-bind:style="selected == 3 ? 'max-height: ' + $refs.container3.scrollHeight + 'px' : ''">
-                    <div class="p-6 flex flex-wrap gap-2">
-                        <?php if (function_exists('apache_get_version')): ?>
-                            <?php for ($i = 0, $iMax = count(apache_get_modules()); $i < $iMax; $i++): ?>
+                    </button>
+                    <div class="relative overflow-hidden transition-all max-h-0 duration-150 text-sm" style="" x-ref="container2" x-bind:style="selected == 2 ? 'max-height: ' + $refs.container2.scrollHeight + 'px' : ''">
+                        <div class="p-6 flex flex-wrap gap-2">
+                            <?php for ($i = 0, $iMax = count(get_loaded_extensions()); $i < $iMax; $i++) : ?>
                                 <span class="px-4 py-1 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
-                            <?= ltrim(apache_get_modules()[$i], 'mod_'); ?>
-                            </span>
+                                    <?= get_loaded_extensions()[$i] ?>
+                                </span>
                             <?php endfor; ?>
-                        <?php endif; ?>
+                        </div>
                     </div>
-                </div>
-            </li>
-        </ul>
+                </li>
+                <?php if (function_exists('apache_get_version')) : ?>
+                    <li class="relative border-b border-gray-200 bg-white">
+                        <button type="button" class="w-full px-8 py-6 text-left shadow" @click="selected !== 3 ? selected = 3 : selected = null">
+                            <span class="flex items-center justify-between">
+                                <span>Loaded Apache Extensions</span>
+                            </span>
+                        </button>
+                        <div class="relative overflow-hidden transition-all max-h-0 duration-700 text-sm" style="" x-ref="container3" x-bind:style="selected == 3 ? 'max-height: ' + $refs.container3.scrollHeight + 'px' : ''">
+                            <div class="p-6 flex flex-wrap gap-2">
+                                <?php for ($i = 0, $iMax = count(apache_get_modules()); $i < $iMax; $i++) : ?>
+                                    <span class="px-4 py-1 rounded-full bg-gray-200 hover:bg-gray-300 cursor-pointer">
+                                        <?= ltrim(apache_get_modules()[$i], 'mod_'); ?>
+                                    </span>
+                                <?php endfor; ?>
+                            </div>
+                        </div>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
     </div>
-</div>
+    <div style="margin-top: 10rem"></div>
 </html>
