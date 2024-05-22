@@ -28,16 +28,9 @@ class Laragon
     // Set the ports for HTTP and HTTPS (Refer to your laragon configuration (Services & Ports))
     private const HTTP_PORT = 80;
     private const HTTPS_PORT = 443;
-    /**
-     * Show or hide https links (set true only if https is enabled on your Laragon server).
-     * Once HTTPS is enabled in the Laragon configuration, you can enable or disable HTTPS links in the index.
-     */
-    private const SHOW_HTTPS_LINKS = true;
-
     // SQL Configuration (for Version Check)
     private const SQL_HOST = 'localhost';
     private const SQL_USER = 'root';
-
 
     // Show or hide sections
     public const SHOW_INFOS_SECTION = true;
@@ -48,6 +41,11 @@ class Laragon
      * (Enable SQL server in Laragon configuration)
      */
     public const SHOW_SQL_SECTION = true;
+    /**
+     * Show or hide https links (set true only if https is enabled on your Laragon server).
+     * Once HTTPS is enabled in the Laragon configuration, you can enable or disable HTTPS links in the index.
+     */
+    private const SHOW_HTTPS_LINKS = true;
     /**
      * End of configuration
      */
