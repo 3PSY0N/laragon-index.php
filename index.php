@@ -16,7 +16,7 @@ class Laragon
      *
      *
      *
-     * Please configure the constants below to match your setup.
+     * Before using this script, please configure the constants below to match your setup.
      */
 
     // Minimum PHP version required to run this page
@@ -527,7 +527,7 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Laragon Index</title>
     <style>
-        *,::before,::after{box-sizing:border-box;}body, p{margin:0;background-color:#f3f4f6;}html{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";}.badge{display:inline-flex;justify-content:center;padding:0.1rem 0.3rem;font-size:0.55rem;width:2rem;margin-right:0.5rem;border-radius:0.25rem;&.http{background-color:#fca5a5;}&.https{background-color:#86efac;}}.bg-gray{background-color:#f3f4f6;}.badge-ext{display:inline-block;justify-content:center;padding:0.1rem 0.3rem;font-size:0.85rem;border-radius:0.25rem;background-color:#e2e8f0;cursor:default;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;&:hover{background-color:#cbd5e1;}}.container{margin:auto;max-width:768px;}.grid-cols-2{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));}.grid{display:grid;gap:0.5rem;}section{padding:1rem;}a{color:inherit;text-decoration:inherit;}.cursor-pointer{cursor:pointer;}.mt-1{margin-top:1rem;}code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:1em;}.border{margin-top:1rem;border:3px dashed #e2e8f0;border-radius:0.25rem;h2{margin-top:0;}}.new-version{display:inline-block;padding:0.5rem;border-radius:0.5rem;background-color:#A7F3D0;margin-top:1rem;}.bold{font-weight:bold;}.center{display:flex;flex-direction:column;justify-content:center;align-items:center;}
+        *,::before,::after{box-sizing:border-box;}body, p{margin:0;background-color:#f3f4f6;}html{font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";}.badge{display:inline-flex;justify-content:center;padding:0.1rem 0.3rem;font-size:0.55rem;width:2rem;margin-right:0.5rem;border-radius:0.25rem;&.http{background-color:#fca5a5;}&.https{background-color:#86efac;}}.bg-gray{background-color:#f3f4f6;}.badge-ext{display:inline-block;justify-content:center;padding:0.1rem 0.3rem;font-size:0.85rem;border-radius:0.25rem;background-color:#e2e8f0;cursor:default;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;&:hover{background-color:#cbd5e1;}}.container{margin:auto;max-width:768px;}.grid-cols-2{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));}.grid{display:grid;gap:0.5rem;}section{padding:1rem;}a{color:inherit;text-decoration:inherit;&:hover{text-decoration:underline}}.cursor-pointer{cursor:pointer;}.mt-1{margin-top:1rem;}code{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-size:1em;}.border{margin-top:1rem;border:3px dashed #e2e8f0;border-radius:0.25rem;h2{margin-top:0;}}.new-version{display:inline-block;padding:0.5rem;border-radius:0.5rem;background-color:#A7F3D0;margin-top:1rem;}.bold{font-weight:bold;}.center{display:flex;flex-direction:column;justify-content:center;align-items:center;}
     </style>
 </head>
 <body>
@@ -537,7 +537,6 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
          alt="Laragon"/>
     <h1>Laragon Panel</h1>
 </div>
-
 
 <main class="container">
     <section class="border container bg-gray">
@@ -606,7 +605,6 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
                 <p>Current PHP version: <strong><?= $phpVersionInfo['currentVersion'] ?></strong> (<a href="<?= $laragon->getLastPhpVersion($laragon->getCurrentPhpVersion())['changeLog'] ?>">Changelog</a>)</p>
                 <p>Latest PHP version: <strong><?= $phpVersionInfo['latestVersion'] ?></strong> (<a href="<?= $phpVersionInfo['changeLog'] ?>">Changelog</a>)</p>
 
-
                 <?php
                 if ($currentPhpVersion < $latestPhpVersion) : ?>
                     <p class="new-version">
@@ -614,11 +612,9 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
                     </p>
                 <?php
                 endif; ?>
-
             </div>
 
             <h3>Loaded extension <a href="?q=info" class="badge-ext cursor-pointer">phpinfo()</a></h3>
-
             <?php
             foreach (get_loaded_extensions() as $ext) : ?>
                 <span class="badge-ext">
@@ -635,7 +631,6 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
         if (function_exists('apache_get_version')) : ?>
             <section class="border">
                 <h2>Apache</h2>
-
                 <?php
                 $apacheVersionInfo = $laragon->getLastApacheVersion();
                 $currentApacheVersion = $laragon->convertVersion($apacheVersionInfo['currentVersion']);
@@ -665,7 +660,6 @@ isset($_GET['q']) ? $laragon->getQ($_GET['q']) : null;
         else: ?>
             <section class="border">
                 <h2>nginx</h2>
-
                 <?php
                 $nginxVersionInfo = $laragon->getLastNginxVersion();
                 $currentNginxVersion = $laragon->convertVersion($nginxVersionInfo['currentVersion']);
