@@ -1,7 +1,8 @@
 <?php
 /**
  * Laragon Index
- * A simple index script to display information about your Laragon sites and display if .
+ * A simple script to display information on servers managed by laragon
+ * This script also displays updates for the various servers used.
  */
 
 // Debug
