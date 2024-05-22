@@ -3,6 +3,8 @@
  * Laragon Index
  * A simple index script to display information about your Laragon sites and display if .
  */
+
+// Debug
 ini_set('display_errors', 0);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
@@ -22,7 +24,7 @@ class Laragon
     // Minimum PHP version required to run this page
     private const MIN_PHP_VERSION = '8.0.0';
     // Set the path to your Laragon install directory
-    private const LARAGON_DIR = 'D:/laragon';
+    private const LARAGON_DIR = 'C:/laragon';
     // Set the ports for HTTP and HTTPS (Refer to your laragon configuration (Services & Ports))
     private const HTTP_PORT = 80;
     private const HTTPS_PORT = 443;
